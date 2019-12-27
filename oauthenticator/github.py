@@ -23,7 +23,7 @@ from jupyterhub.auth import LocalAuthenticator
 from traitlets import List, Set, Unicode
 
 from .common import next_page_from_links
-from .oauth2 import OAuthLoginHandler, OAuthenticator
+from .oauth2 import OAuthLoginHandler, OAuthenticator, OAuthCallbackHandler
 
 # Support github.com and github enterprise installations
 GITHUB_HOST = os.environ.get('GITHUB_HOST') or 'github.com'
@@ -55,6 +55,10 @@ class GitHubLoginHandler(OAuthLoginHandler, GitHubMixin):
     pass
 
 
+class GitHubCallbackHandler(OAuthCallbackHandler):
+    pass
+
+
 class GitHubOAuthenticator(OAuthenticator):
 
     # see github_scopes.md for details about scope config
@@ -78,6 +82,7 @@ class GitHubOAuthenticator(OAuthenticator):
     client_id_env = 'GITHUB_CLIENT_ID'
     client_secret_env = 'GITHUB_CLIENT_SECRET'
     login_handler = GitHubLoginHandler
+    callback_handler = GitHubCallbackHandler
 
     github_organization_whitelist = Set(
         config=True,

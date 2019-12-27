@@ -97,7 +97,12 @@ class OAuthLoginHandler(BaseHandler):
 
     def get(self):
         redirect_uri = self.authenticator.get_callback_url(self)
+        login_service = self.authenticator.login_service
+        if not login_service and hasattr(self.authenticator, 'get_login_service'):
+            login_service = self.authenticator.get_login_service(self) or ''
+
         self.log.info('OAuth redirect: %r', redirect_uri)
+        self.statsd.incr(f'login.request.{login_service.lower()}')
         state = self.get_state()
         self.set_state_cookie(state)
         self.authorize_redirect(
@@ -268,10 +273,10 @@ class OAuthenticator(Authenticator):
 
     login_handler = "Specify login handler class in subclass"
     callback_handler = OAuthCallbackHandler
-    
+
     def get_callback_url(self, handler=None):
         """Get my OAuth redirect URL
-        
+
         Either from config or guess based on the current request.
         """
         if self.oauth_callback_url:

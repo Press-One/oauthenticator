@@ -23,7 +23,7 @@ from jupyterhub.auth import LocalAuthenticator
 
 from traitlets import Set
 
-from .oauth2 import OAuthLoginHandler, OAuthenticator
+from .oauth2 import OAuthLoginHandler, OAuthenticator, OAuthCallbackHandler
 
 GITLAB_URL = os.getenv('GITLAB_URL')
 GITLAB_HOST = os.getenv('GITLAB_HOST')
@@ -68,6 +68,10 @@ class GitLabLoginHandler(OAuthLoginHandler, GitLabMixin):
     pass
 
 
+class GitLabCallbackHandler(OAuthCallbackHandler):
+    pass
+
+
 class GitLabOAuthenticator(OAuthenticator):
     # see gitlab_scopes.md for details about scope config
     # set scopes via config, e.g.
@@ -78,6 +82,7 @@ class GitLabOAuthenticator(OAuthenticator):
     client_id_env = 'GITLAB_CLIENT_ID'
     client_secret_env = 'GITLAB_CLIENT_SECRET'
     login_handler = GitLabLoginHandler
+    callback_handler = GitLabCallbackHandler
 
     gitlab_group_whitelist = Set(
         config=True,
@@ -139,7 +144,10 @@ class GitLabOAuthenticator(OAuthenticator):
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
-        username = resp_json["username"]
+        # username = resp_json["username"]
+        username = '@'.join([
+            str(resp_json['id']), self.login_service
+        ])
         user_id = resp_json["id"]
         is_admin = resp_json.get("is_admin", False)
 
