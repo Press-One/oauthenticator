@@ -9,6 +9,7 @@ from traitlets import (
 from jupyterhub.auth import Authenticator
 from jupyterhub.handlers.login import LoginHandler, LogoutHandler
 from jupyterhub.user import User
+from jupyterhub.utils import url_path_join
 
 from .google import GoogleOAuthenticator, GoogleLoginHandler, GoogleOAuthHandler
 from .oauth2 import OAuthLoginHandler, OAuthCallbackHandler, OAuthenticator
@@ -21,23 +22,34 @@ class MultiLoginHandler(LoginHandler):
         Mainly changes the template, also simplify a bit
         """
         self.statsd.incr('login.request')
-        oauth_list = []
 
+        nextval = self.get_argument('next', default='/hub')
+        inviter = self.get_argument('inviter', default='')
+        login_url_query = {'next': nextval}
+        if inviter:
+            login_url_query['inviter'] = inviter
+
+        oauth_list = []
         for auth_info in self.authenticator._auth_provider_list:
             auth_class = auth_info[0]
             auth_obj = auth_class(config=self.config)
-            oauth_list.append(str(auth_obj.login_service))
+            login_service = auth_obj.login_service
+            authenticator_login_url = url_concat(
+                self.authenticator.login_url(self.hub.base_url, login_service),
+                login_url_query
+            )
+            oauth_list.append({
+                'login_service': login_service,
+                'authenticator_login_url': authenticator_login_url,
+            })
 
-        nextval = self.get_argument('next', default='')
-        return self.render_template('login.html',
-            next=url_escape(nextval),
+        return self.render_template(
+            'login.html',
             oauth_list=oauth_list,
+            next=url_escape(nextval),
+            username=username,
             login_error=login_error,
             custom_html=self.authenticator.custom_html,
-            authenticator_login_url=url_concat(
-                self.authenticator.login_url(self.hub.base_url),
-                {'next': nextval},
-            ),
         )
 
     @gen.coroutine
@@ -124,6 +136,9 @@ class MultiOAuthenticator(Authenticator):
         self.__client_secret = subauth.client_secret
         self.__scope = subauth.scope
         self.__subauth_name = subauth.login_service
+
+    def login_url(self, base_url, login_service):
+        return url_path_join(base_url, login_service.lower(), 'login')
 
     def _get_auth_obj(self, handler=None):
         if handler is None:

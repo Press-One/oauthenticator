@@ -89,10 +89,15 @@ class OAuthLoginHandler(BaseHandler):
                     next_url,
                 )
         if self._state is None:
-            self._state = _serialize_state({
+            _state_dict = {
                 'state_id': uuid.uuid4().hex,
                 'next_url': next_url,
-            })
+            }
+
+            inviter = self.get_argument('inviter', '')
+            if inviter:
+                _state_dict['inviter'] = inviter
+            self._state = _serialize_state(_state_dict)
         return self._state
 
     def get(self):
