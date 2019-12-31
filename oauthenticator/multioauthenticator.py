@@ -189,6 +189,10 @@ class MultiOAuthenticator(Authenticator):
                 (f'/{login_service}/login', login_handler),
                 (f'/{login_service}/oauth_callback', callback_handler),
             ])
+            if login_service.lower() == 'github':  # 兼容老版本的app
+                h.extend([
+                    ('/oauth_login', login_handler)
+                ])
 
         return h
 
