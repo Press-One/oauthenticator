@@ -47,6 +47,7 @@ class MultiLoginHandler(LoginHandler):
             'login.html',
             oauth_list=oauth_list,
             next=url_escape(nextval),
+            inviter=inviter,
             username=username,
             login_error=login_error,
             custom_html=self.authenticator.custom_html,
@@ -76,13 +77,7 @@ class MultiLogoutHandler(LogoutHandler):
 
 class MultiOAuthenticator(Authenticator):
 
-    _auth_provider_list = List(
-                    Tuple(
-                        Type(GoogleOAuthenticator, OAuthenticator, help='Must be an OAuthenticator'),
-                        Type(GoogleLoginHandler, OAuthLoginHandler, help="Must be a OAuthLoginHandler"),
-                        Type(GoogleOAuthHandler, OAuthCallbackHandler, help="Must be a OAuthCallbackHandler")
-                        )
-    ).tag(config=True)
+    _auth_provider_list = List().tag(config=True)
 
     @gen.coroutine
     def pre_spawn_start(self, user, spawner):
@@ -183,12 +178,17 @@ class MultiOAuthenticator(Authenticator):
             login_service = auth_obj.login_service.lower()
             handlers = dict(auth_obj.get_handlers(app))
 
-            login_handler = handlers['/oauth_login']
-            callback_handler = handlers['/oauth_callback']
-            h.extend([
-                (f'/{login_service}/login', login_handler),
-                (f'/{login_service}/oauth_callback', callback_handler),
-            ])
+            callback_handler = None
+            login_handler = handlers.get('/oauth_login')
+            if login_handler:
+                callback_handler = handlers['/oauth_callback']
+                h.extend([
+                    (f'/{login_service}/login', login_handler),
+                    (f'/{login_service}/oauth_callback', callback_handler),
+                ])
+            else:
+                h.extend(list(handlers.items()))
+
             if login_service.lower() == 'github':  # 兼容老版本的app
                 h.extend([
                     ('/oauth_login', login_handler)
@@ -201,12 +201,20 @@ class MultiOAuthenticator(Authenticator):
         """
         Delegate authentication to the appropriate authenticator
         """
-        # import pdb
-        # pdb.set_trace()
+        #import pdb; pdb.set_trace()
+        # check oauth
         for auth_tuple in self._auth_provider_list:
             auth_class = auth_tuple[0]
             oauth_handler_class = auth_tuple[2]
-            if isinstance(handler, oauth_handler_class):
+            if oauth_handler_class and isinstance(handler, oauth_handler_class):
+                auth_obj = auth_class(config=self.config)
+                auth = yield auth_obj.authenticate(handler, data)
+                return auth
+
+        for auth_tuple in self._auth_provider_list:
+            auth_class = auth_tuple[0]
+            oauth_handler_class = auth_tuple[2]
+            if oauth_handler_class is None:
                 auth_obj = auth_class(config=self.config)
                 auth = yield auth_obj.authenticate(handler, data)
                 return auth
