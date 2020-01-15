@@ -52,8 +52,13 @@ class PhoneAuthenticator(Authenticator):
         )
 
     def format_phone(self, phone):
+        if not phone:
+            return phone
+
         if phone and phone[0] != '+' and len(phone) == 11:
             phone = f'+86{phone}'
+        if phone[0] == '+':
+            phone = phone[1:]
         return phone
 
     def get_redis_key(self, phone):
@@ -80,7 +85,7 @@ class PhoneAuthenticator(Authenticator):
         self.delete_code_from_redis(phone)
 
     async def authenticate(self, handler, data):
-        phone = data['phone'].strip()  # phone number
+        phone = self.format_phone(data['phone'].strip())  # phone number
         code = data['code'].strip()    # verification code
         auth = {
             'name': phone,
