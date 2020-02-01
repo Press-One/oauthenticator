@@ -87,14 +87,13 @@ class PhoneAuthenticator(Authenticator):
     async def authenticate(self, handler, data):
         phone = self.format_phone(data['phone'].strip())  # phone number
         code = data['code'].strip()    # verification code
-        login = phone[:-8] + '****' + phone[-4:]
         auth = {
             'name': phone,
             'auth_state': {
                 'phone_user': {
                     'avatar_url': None,
                     'name': phone,
-                    'login': login,
+                    'login': '',
                 }
             },
             'admin': False,
