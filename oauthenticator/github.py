@@ -138,7 +138,7 @@ class GitHubOAuthenticator(OAuthenticator):
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
-        username = '@'.join([
+        username = '_'.join([
             str(resp_json['id']), self.login_service
         ])
         # username is now the GitHub userid.
