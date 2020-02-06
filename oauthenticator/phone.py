@@ -61,32 +61,33 @@ class PhoneAuthenticator(Authenticator):
             phone = phone[1:]
         return phone
 
-    def get_redis_key(self, phone):
+    def get_redis_key(self, site, phone):
         phone = self.format_phone(phone)
         prefix = 'jupyterhub:phone:code:'
-        key = f'{prefix}{phone}'
+        key = f'{prefix}:{site}:{phone}'
         return key
 
-    def delete_code_from_redis(self, phone):
-        key = self.get_redis_key(phone)
+    def delete_code_from_redis(self, site, phone):
+        key = self.get_redis_key(site, phone)
         return self.redis.delete(key)
 
-    def get_code_from_redis(self, phone):
-        key = self.get_redis_key(phone)
+    def get_code_from_redis(self, site, phone):
+        key = self.get_redis_key(site, phone)
         val = self.redis.get(key)
         if isinstance(val, bytes):
             val = val.decode()
         return val
 
-    def is_valid_code(self, phone, code):
-        return code and self.get_code_from_redis(phone) == code
+    def is_valid_code(self, site, phone, code):
+        return code and self.get_code_from_redis(site, phone) == code
 
-    def login_success(self, phone):
-        self.delete_code_from_redis(phone)
+    def login_success(self, site, phone):
+        self.delete_code_from_redis(site, phone)
 
     async def authenticate(self, handler, data):
         phone = self.format_phone(data['phone'].strip())  # phone number
         code = data['code'].strip()    # verification code
+        site = 'xue-cn'  # FIXME: hardcode
         auth = {
             'name': phone,
             'auth_state': {
@@ -101,8 +102,8 @@ class PhoneAuthenticator(Authenticator):
 
         if phone in self.whitelist:  # for appstore review
             return auth
-        elif self.is_valid_code(phone, code):
-            self.login_success(phone)
+        elif self.is_valid_code(site, phone, code):
+            self.login_success(site, phone)
             return auth
         else:
-            self.log.info(f'Invalid code = {code} by phone = {phone}')
+            self.log.info(f'Invalid code = {code} by phone = {phone} site = {site}')
