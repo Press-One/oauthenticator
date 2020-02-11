@@ -97,6 +97,11 @@ class OAuthLoginHandler(BaseHandler):
             inviter = self.get_argument('inviter', '')
             if inviter:
                 _state_dict['inviter'] = inviter
+
+            fromValue = self.get_argument('from', '')
+            if fromValue:
+                _state_dict['from'] = fromValue
+
             self._state = _serialize_state(_state_dict)
         return self._state
 
